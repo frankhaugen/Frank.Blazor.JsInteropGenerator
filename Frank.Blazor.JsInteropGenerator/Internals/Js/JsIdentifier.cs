@@ -31,11 +31,3 @@ public static class JsIdentifier
         return ScriptFlavor.Script;
     } 
 }
-
-public enum ScriptFlavor
-{
-    Unknown,
-    Script,
-    Module,
-    Expression
-}
