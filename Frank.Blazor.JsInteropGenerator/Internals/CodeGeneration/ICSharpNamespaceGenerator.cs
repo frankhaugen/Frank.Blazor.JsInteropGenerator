@@ -4,5 +4,5 @@ namespace Frank.Blazor.JsInteropGenerator.Internals.CodeGeneration;
 
 public interface ICSharpNamespaceGenerator
 {
-    public NamespaceDeclarationSyntax Generate(string namespaceName, ClassDeclarationSyntax classDeclaration);
+    public NamespaceDeclarationSyntax Generate(string namespaceName);
 }

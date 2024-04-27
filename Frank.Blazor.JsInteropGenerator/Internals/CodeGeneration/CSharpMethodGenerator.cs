@@ -1,4 +1,5 @@
-﻿using Frank.Blazor.JsInteropGenerator.Internals.Js;
+﻿using System.Globalization;
+using Frank.Blazor.JsInteropGenerator.Internals.Js;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,21 +12,67 @@ public class CSharpMethodGenerator : ICSharpMethodGenerator
     {
         return GenerateMethod(functionDefinition.Name);
     }
-    
+
     private MethodDeclarationSyntax GenerateMethod(string methodName)
     {
-        return SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName("Task"),
-                SyntaxFactory.Identifier(methodName + "Async"))
-            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.AsyncKeyword))
-            .WithParameterList(
-                SyntaxFactory.ParameterList(
-                    SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.Parameter(SyntaxFactory.Identifier("args"))
-                            .WithType(CreateArrayType())
+        return SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName("Task<object?>"),
+                SyntaxFactory.Identifier(PrepareMethodName(methodName)))
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                SyntaxFactory.Token(SyntaxKind.AsyncKeyword))
+            .WithParameterList(CreateParameterList())
+            .WithBody(
+                CreateMethodBody(
+                    methodName
+                )
+            );
+    }
+
+    private ParameterListSyntax CreateParameterList()
+    {
+        return SyntaxFactory.ParameterList(
+            SyntaxFactory.SingletonSeparatedList(
+                CreateNullableObjectParamsParameter()
+            ));
+    }
+
+    private ParameterSyntax CreateNullableObjectParamsParameter()
+    {
+        return SyntaxFactory.Parameter(
+                SyntaxFactory.Identifier("args")
+            )
+            .AddModifiers(
+                SyntaxFactory.Token(SyntaxKind.ParamsKeyword)
+            )
+            .WithType(
+                SyntaxFactory.NullableType(
+                    SyntaxFactory.ArrayType(
+                                SyntaxFactory.PredefinedType(
+                                    SyntaxFactory.Token(
+                                        SyntaxKind.ObjectKeyword
+                                    )
+                                ))
+                        
+                    .AddRankSpecifiers(
+                        SyntaxFactory.ArrayRankSpecifier(
+                            SyntaxFactory.SingletonSeparatedList<ExpressionSyntax>(
+                                SyntaxFactory.OmittedArraySizeExpression())
+                        )
                     )
                 )
             )
-            .WithBody(CreateMethodBody(methodName));
+            // .WithDefault(
+            //     SyntaxFactory.EqualsValueClause(
+            //         SyntaxFactory.LiteralExpression(
+            //             SyntaxKind.NullLiteralExpression
+            //         )
+            //     )
+            // )
+            ;
+    }
+
+    private string PrepareMethodName(string methodName)
+    {
+        return CapitalizeFirstLetter(methodName) + "Async";
     }
 
     private ArrayTypeSyntax CreateArrayType()
@@ -40,21 +87,35 @@ public class CSharpMethodGenerator : ICSharpMethodGenerator
     {
         return SyntaxFactory.Block(
             SyntaxFactory.SingletonList<StatementSyntax>(
-                SyntaxFactory.ExpressionStatement(
+                SyntaxFactory.ReturnStatement(
                     CreateInvocationExpression(methodName)
                 )
             )
         );
     }
 
-    private InvocationExpressionSyntax CreateInvocationExpression(string methodName)
+    private string CapitalizeFirstLetter(string methodName)
     {
-        return SyntaxFactory.InvocationExpression(
+        return methodName[0].ToString(CultureInfo.InvariantCulture).ToUpper(CultureInfo.InvariantCulture) + methodName[1..];
+    }
+
+    private AwaitExpressionSyntax CreateInvocationExpression(string methodName)
+    {
+        var exp = SyntaxFactory.InvocationExpression(
             SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 SyntaxFactory.IdentifierName("_jsRuntime"),
-                SyntaxFactory.IdentifierName("InvokeAsync")
-            ),
+                SyntaxFactory.GenericName(
+                    SyntaxFactory.Identifier("InvokeAsync")
+                ).WithTypeArgumentList(
+                    SyntaxFactory.TypeArgumentList(
+                        SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
+                            SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ObjectKeyword))
+                        )
+                    )
+                )
+            )
+        ).WithArgumentList(
             SyntaxFactory.ArgumentList(
                 SyntaxFactory.SeparatedList<ArgumentSyntax>(
                     new SyntaxNodeOrToken[]
@@ -73,5 +134,7 @@ public class CSharpMethodGenerator : ICSharpMethodGenerator
                 )
             )
         );
+
+        return SyntaxFactory.AwaitExpression(exp);
     }
 }

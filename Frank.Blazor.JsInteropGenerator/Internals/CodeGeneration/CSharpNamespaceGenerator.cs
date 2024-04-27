@@ -5,8 +5,8 @@ namespace Frank.Blazor.JsInteropGenerator.Internals.CodeGeneration;
 
 public class CSharpNamespaceGenerator : ICSharpNamespaceGenerator
 {
-    public NamespaceDeclarationSyntax Generate(string namespaceName, ClassDeclarationSyntax classDeclaration)
+    public NamespaceDeclarationSyntax Generate(string namespaceName)
     {
-        return SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(namespaceName)).AddMembers(classDeclaration);
+        return SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(namespaceName));
     }
 }
